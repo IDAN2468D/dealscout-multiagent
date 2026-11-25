@@ -1,0 +1,27 @@
+$kind: http-request
+name: "עדכון פרופיל קונה (מועדוני אשראי: הייטקזון, חבר, פליי קארד, מקס)"
+url: "{{base_url}}/api/v1/users/me/profile"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "preferred_currency": "ILS",
+      "ship_to_country": "IL",
+      "credit_card_clubs": ["HitechZone", "Hever", "FlyCard", "Max"],
+      "preferred_stores": ["Amazon", "KSP", "ASOS"],
+      "min_seller_trust": 75,
+      "notification_channels": ["email", "telegram"],
+      "telegram_chat_id": "987654321"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('מעדכן בהצלחה את מועדוני האשראי', function () {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().credit_card_clubs).to.include('HitechZone');
+      });
+    language: text/javascript
+order: 3000

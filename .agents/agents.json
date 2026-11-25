@@ -1,0 +1,141 @@
+{
+  "project_name": "dealscout-multiagent",
+  "version": "2.1.0",
+  "framework": "Agno / FastAPI",
+  "llm_provider": "google-genai",
+  "default_model": "gemini-3.5-flash-lite",
+  "model_config": {
+    "orchestrator_model_env": "GEMINI_ORCHESTRATOR_MODEL",
+    "subagent_model_env": "GEMINI_SUBAGENT_MODEL",
+    "default_temperature": 0.2,
+    "context_caching_enabled": true,
+    "context_cache_ttl_seconds": 3600
+  },
+  "security": {
+    "auth": "JWT + Refresh Rotation + Google OAuth2",
+    "rbac_tiers": ["FREE", "PRO", "ADMIN"],
+    "multi_tenancy_isolation": "strict_user_id",
+    "deterministic_math_enforced": true,
+    "hitl_checkout_required": true
+  },
+  "orchestrator": {
+    "id": "deal-orchestrator-agent",
+    "name": "DealOrchestratorAgent",
+    "model": "gemini-3.5-flash-lite",
+    "entrypoint": "backend.app.agents.deal_orchestrator:create_dealscout_team",
+    "stream_enabled": true,
+    "stream_protocol": "SSE"
+  },
+  "mcp_servers": [
+    {
+      "id": "ecommerce-mcp",
+      "file": "backend/app/mcp_servers/ecommerce_mcp.py",
+      "access": "READ",
+      "tools": [
+        "search_store_offers",
+        "get_product_details",
+        "check_stock_shipping",
+        "fetch_product_reviews"
+      ]
+    },
+    {
+      "id": "coupons-mcp",
+      "file": "backend/app/mcp_servers/coupons_mcp.py",
+      "access": "READ",
+      "tools": [
+        "find_store_coupons",
+        "validate_coupon_dry_run",
+        "check_stacking_rules",
+        "get_crowd_score"
+      ]
+    },
+    {
+      "id": "notify-mcp",
+      "file": "backend/app/mcp_servers/notify_mcp.py",
+      "access": "WRITE",
+      "requires_user_ownership": true,
+      "tools": [
+        "send_price_alert",
+        "dispatch_checkout_approval_card"
+      ]
+    }
+  ],
+  "agents": [
+    {
+      "id": "multimodal-product-matcher",
+      "name": "Multimodal Product Matcher",
+      "model": "gemini-3.5-flash-lite",
+      "capabilities": ["vision", "url_context"],
+      "tier_required": "PRO",
+      "tools": ["extract_sku_from_media"],
+      "source_file": "backend/app/agents/deal_orchestrator.py"
+    },
+    {
+      "id": "store-search-mcp-agent",
+      "name": "Store Search MCP Agent",
+      "model": "gemini-3.5-flash-lite",
+      "capabilities": ["google_search_grounding", "mcp_read"],
+      "tier_required": "FREE",
+      "tools": ["search_store_offers", "check_stock_shipping", "fuzzy_search_catalog"],
+      "source_file": "backend/app/search/elasticsearch_catalog.py"
+    },
+    {
+      "id": "coupon-hunter-rag-agent",
+      "name": "Coupon Hunter & Clubs RAG Agent",
+      "model": "gemini-3.5-flash-lite",
+      "capabilities": ["rag", "context_caching", "mcp_read"],
+      "tier_required": "FREE",
+      "tools": ["find_store_coupons", "validate_coupon_dry_run", "query_club_policies"],
+      "source_file": "backend/app/rag/promo_policy_store.py"
+    },
+    {
+      "id": "price-history-auditor",
+      "name": "Price History Auditor",
+      "model": "gemini-3.5-flash-lite",
+      "capabilities": ["sql_audit"],
+      "tier_required": "FREE",
+      "tools": ["audit_fake_discount", "get_price_history_90d"],
+      "source_file": "backend/app/tools/price_history_tools.py"
+    },
+    {
+      "id": "review-compatibility-auditor",
+      "name": "Review & Compatibility Auditor",
+      "model": "gemini-3.5-flash-lite",
+      "capabilities": ["review_analysis", "spec_compatibility"],
+      "tier_required": "FREE",
+      "tools": ["fetch_product_reviews", "audit_voltage_and_reviews"],
+      "source_file": "backend/app/tools/review_compatibility_tools.py"
+    },
+    {
+      "id": "landed-cost-calculator",
+      "name": "Landed Cost Calculator",
+      "model": "deterministic_python",
+      "capabilities": ["fx_conversion", "israel_vat_18_above_75"],
+      "tier_required": "FREE",
+      "tools": ["calculate_landed_cost_il"],
+      "source_file": "backend/app/tools/landed_cost_tools.py"
+    },
+    {
+      "id": "smart-cart-tax-optimizer",
+      "name": "Smart Cart Tax-Split Optimizer",
+      "model": "deterministic_python",
+      "capabilities": ["bin_packing", "tax_threshold_optimization"],
+      "tier_required": "PRO",
+      "tools": ["optimize_cart_tax_split"],
+      "source_file": "backend/app/tools/cart_split_optimizer_tools.py"
+    },
+    {
+      "id": "trust-guardrails-hitl-agent",
+      "name": "Trust, Guardrails & HITL Agent",
+      "model": "gemini-3.5-flash-lite",
+      "capabilities": ["prompt_injection_defense", "anti_scam", "hitl_gate"],
+      "tier_required": "FREE",
+      "tools": [
+        "sanitize_external_text",
+        "check_seller_trust",
+        "dispatch_checkout_approval_card"
+      ],
+      "source_file": "backend/app/tools/guardrails_tools.py"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{base_url}}/health"
+method: GET
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('סטטוס 200 והשרת תקין עם gemini-3.5-flash-lite', function () {
+        pm.response.to.have.status(200);
+        const d = pm.response.json();
+        pm.expect(d.status).to.eql('healthy');
+        pm.expect(d.model).to.eql('gemini-3.5-flash-lite');
+        pm.expect(d.mcp_servers).to.have.lengthOf(3);
+      });
+    language: text/javascript
+order: 1000

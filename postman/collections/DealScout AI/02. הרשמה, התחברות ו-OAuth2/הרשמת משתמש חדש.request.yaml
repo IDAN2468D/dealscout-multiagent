@@ -1,0 +1,32 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/auth/register"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "{{user_email}}",
+      "password": "{{user_password}}",
+      "full_name": "בודק DealScout"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: beforeRequest
+    code: |-
+      const uniqueEmail = `buyer_${Date.now()}@dealscout.ai`;
+      pm.environment.set('user_email', uniqueEmail);
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('משתמש נרשם בהצלחה (201) והונפק טוקן אימות', function () {
+        pm.expect(pm.response.code).to.be.oneOf([200, 201]);
+        const d = pm.response.json();
+        pm.expect(d.verification_token).to.be.a('string').and.not.be.empty;
+        pm.environment.set('verification_token', d.verification_token);
+        pm.environment.set('user_id', d.user_id);
+      });
+    language: text/javascript
+order: 1000

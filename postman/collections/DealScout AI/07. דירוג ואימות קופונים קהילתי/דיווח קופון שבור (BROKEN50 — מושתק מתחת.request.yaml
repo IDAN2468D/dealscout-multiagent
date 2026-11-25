@@ -1,0 +1,24 @@
+$kind: http-request
+name: דיווח קופון שבור (BROKEN50 — מושתק מתחת ל-0.35)
+url: "{{base_url}}/api/v1/coupons/BROKEN50/feedback"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "store_name": "Amazon",
+      "worked": false,
+      "cart_total_usd": 131.0
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('קופון BROKEN50 נשאר מושתק מתחת לסף 0.35', function () {
+        pm.response.to.have.status(200);
+        const d = pm.response.json();
+        pm.expect(d.suppressed).to.eql(true);
+      });
+    language: text/javascript
+order: 2000

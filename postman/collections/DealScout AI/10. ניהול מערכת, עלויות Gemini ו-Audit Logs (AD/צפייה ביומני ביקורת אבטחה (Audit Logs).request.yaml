@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/audit-logs"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('ADMIN מקבל Audit Logs (200), משתמש רגיל מקבל 403', function () {
+        const tier = pm.environment.get('user_tier') || 'FREE';
+        if (tier === 'ADMIN') {
+          pm.response.to.have.status(200);
+          pm.expect(pm.response.json()).to.be.an('array');
+        } else {
+          pm.response.to.have.status(403);
+        }
+      });
+    language: text/javascript
+order: 2000

@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/auth/oauth/google/callback?code=mock_google_code&email=oauth.user@dealscout.ai"
+method: GET
+queryParams:
+  code: mock_google_code
+  email: oauth.user@dealscout.ai
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Callback של Google OAuth2 מנפיק JWT', function () {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().access_token).to.be.a('string').and.not.be.empty;
+      });
+    language: text/javascript
+order: 5000

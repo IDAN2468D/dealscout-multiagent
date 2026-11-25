@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/users/me/profile"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('סטטוס 200 ומדינת יעד מוגדרת', function () {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().ship_to_country).to.be.a('string');
+      });
+    language: text/javascript
+order: 2000

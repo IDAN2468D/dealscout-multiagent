@@ -1,0 +1,29 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/deals/checkout/initiate"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "product_id": "prod_sony_xm5",
+      "sku": "SONY-WH1000XM5",
+      "product_title": "Sony WH-1000XM5 Wireless Headphones",
+      "store_name": "Amazon",
+      "affiliate_url": "https://www.amazon.com/dp/B09XS7JWHH?tag=dealscoutai-20",
+      "total_landed_usd": 295.98,
+      "total_landed_ils": 1080.33,
+      "applied_coupons": ["HTZ12"]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('עוצר את הרכישה בסטטוס PENDING_APPROVAL', function () {
+        pm.expect(pm.response.code).to.be.oneOf([200, 201]);
+        const d = pm.response.json();
+        pm.expect(d.status).to.eql('PENDING_APPROVAL');
+        pm.environment.set('approval_id', d.approval_id);
+      });
+    language: text/javascript
+order: 1000

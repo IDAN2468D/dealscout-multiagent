@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DealScout AI | צייד העסקאות, קופונים ואופטימיזציית מס</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Top Header -->
+    <header class="topbar">
+      <div class="topbar-brand">
+        <div class="brand-logo" aria-hidden="true">⚡</div>
+        <div>
+          <div class="brand-title">
+            <span>DealScout AI</span>
+            <span class="model-pill">gemini-3.5-flash-lite</span>
+          </div>
+          <div class="brand-subtitle">מנוע ציד עסקאות רב-סוכנים, אימות קופונים ומס יבוא אישי</div>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <div id="health-indicator" class="status-pill status-idle">
+          <span class="dot"></span>
+          <span>בודק שרת...</span>
+        </div>
+        <div id="user-badge" class="user-badge hidden">
+          <span id="user-email-label">אורח</span>
+          <span id="user-tier-badge" class="tier-badge tier-free">FREE</span>
+        </div>
+        <button id="open-auth-btn" class="btn btn-primary btn-sm" type="button">התחברות / הרשמה</button>
+        <button id="logout-btn" class="btn btn-ghost btn-sm hidden" type="button">התנתק</button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="main-nav" aria-label="ניווט ראשי">
+      <button class="nav-tab active" data-tab="search-tab" type="button">🔍 חיפוש סוכנים חי (SSE)</button>
+      <button class="nav-tab" data-tab="cart-split-tab" type="button">📦 פיצול סל חכם <span class="pro-tag">PRO</span></button>
+      <button class="nav-tab" data-tab="multimodal-tab" type="button">📸 זיהוי תמונה / קישור <span class="pro-tag">PRO</span></button>
+      <button class="nav-tab" data-tab="watchlist-tab" type="button">💰 מעקב מחירים וחיסכון</button>
+      <button class="nav-tab" data-tab="profile-tab" type="button">💳 ארנק מועדונים ופרופיל</button>
+    </nav>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- TAB 1: Live Deal Search SSE -->
+      <section id="search-tab" class="tab-panel active">
+        <div class="card search-hero">
+          <div class="card-header">
+            <div>
+              <h2>חיפוש עסקאות אוטונומי בזמן אמת</h2>
+              <p class="muted">9 סוכנים במקביל בודקים חנויות, קופונים מאומתים, היסטוריית 90 יום, תאימות 110V ומע"מ 18% מעל $75.</p>
+            </div>
+          </div>
+
+          <form id="deal-search-form" class="search-form">
+            <div class="search-row">
+              <div class="input-group flex-grow">
+                <label for="search-query">מה תרצה לחפש?</label>
+                <input id="search-query" type="text" placeholder="לדוגמה: Sony WH-1000XM5, Ninja Creami, Samsung T7..." required minlength="2" />
+              </div>
+              <div class="input-group input-sm">
+                <label for="search-budget">תקציב מקס׳ (₪)</label>
+                <input id="search-budget" type="number" min="1" step="10" placeholder="ללא הגבלה" />
+              </div>
+              <div class="input-group input-xs">
+                <label for="search-ship-to">יעד משלוח</label>
+                <select id="search-ship-to">
+                  <option value="">מפרופיל (IL)</option>
+                  <option value="IL">IL — ישראל</option>
+                  <option value="US">US — ארה״ב</option>
+                  <option value="GB">GB — בריטניה</option>
+                </select>
+              </div>
+              <div class="input-group btn-align">
+                <button id="search-submit-btn" class="btn btn-primary btn-lg" type="submit">הפעל סוכנים ⚡</button>
+              </div>
+            </div>
+          </form>
+
+          <!-- 1-Click Demo Presets -->
+          <div class="presets-bar">
+            <span class="presets-label">תרחישי הדגמה מהירים (1-Click):</span>
+            <button class="preset-chip" data-query="Sony WH-1000XM5" type="button">🎧 Sony WH-1000XM5 (עסקה + קופוני מועדון)</button>
+            <button class="preset-chip preset-warn" data-query="Ninja Creami" type="button">⚡ Ninja Creami 110V Trap (אזהרת מתח)</button>
+            <button class="preset-chip preset-danger" data-query="Samsung T7" type="button">🚨 Samsung T7 Fake Sale (מבצע פיקטיבי)</button>
+            <button class="preset-chip preset-danger" data-query="AirPods Pro" type="button">🛡️ AirPods Pro Scam / Injection Trap</button>
+          </div>
+        </div>
+
+        <div class="search-workspace">
+          <!-- Live SSE Stream Log -->
+          <aside class="card sse-panel">
+            <div class="card-header">
+              <h3>זרם פעילות סוכנים (SSE Live)</h3>
+              <span id="sse-status-badge" class="badge badge-neutral">מוכן</span>
+            </div>
+            <div id="sse-timeline" class="sse-timeline">
+              <div class="empty-state">בחר תרחיש הדגמה או הזן מוצר כדי לצפות בסוכנים פועלים בשידור חי.</div>
+            </div>
+          </aside>
+
+          <!-- Deal Results -->
+          <div class="results-column">
+            <div id="final-report-banner" class="card final-report-banner hidden"></div>
+            <div id="deals-grid" class="deals-grid">
+              <div class="card empty-state-card">
+                <div class="empty-icon">🛍️</div>
+                <h3>ממתין לחיפוש</h3>
+                <p class="muted">התוצאות ידורגו כאן לפי עלות סופית אמיתית עד הבית (כולל משלוח, קופונים ומע"מ 18% מעל $75).</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: Smart Cart Tax-Split Optimizer (PRO) -->
+      <section id="cart-split-tab" class="tab-panel">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>אופטימיזציית פיצול סל חכם (חיסכון במע"מ 18%) <span class="pro-tag">PRO</span></h2>
+              <p class="muted">אלגוריתם Bin-Packing דטרמיניסטי משווה בין משלוח מרוכז לפיצול חבילות מתחת לרף $75.00 בישראל.</p>
+            </div>
+            <div class="preset-actions">
+              <button id="load-cart-preset-tech" class="btn btn-outline btn-sm" type="button">טען סל גאדג׳טים ($145)</button>
+              <button id="load-cart-preset-asos" class="btn btn-outline btn-sm" type="button">טען סל ASOS ($90)</button>
+            </div>
+          </div>
+
+          <form id="cart-split-form" class="stack-gap">
+            <div class="grid-4">
+              <div class="input-group">
+                <label for="cart-store">חנות</label>
+                <input id="cart-store" type="text" value="Amazon" required />
+              </div>
+              <div class="input-group">
+                <label for="cart-ship-to">ארץ יעד</label>
+                <select id="cart-ship-to">
+                  <option value="IL" selected>IL — ישראל (פטור מע"מ עד $75)</option>
+                  <option value="US">US — ארה״ב</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label for="cart-shipping-fee">עלות משלוח לחבילה ($)</label>
+                <input id="cart-shipping-fee" type="number" step="0.5" min="0" value="12" required />
+              </div>
+              <div class="input-group">
+                <label for="cart-free-threshold">סף משלוח חינם ($)</label>
+                <input id="cart-free-threshold" type="number" step="1" min="0" value="49" />
+              </div>
+            </div>
+
+            <div class="cart-items-header">
+              <h4>פריטים בסל (מינימום 2)</h4>
+              <button id="add-cart-item-btn" class="btn btn-outline btn-sm" type="button">+ הוסף פריט</button>
+            </div>
+            <div id="cart-items-list" class="cart-items-list"></div>
+
+            <div class="form-footer">
+              <button class="btn btn-primary" type="submit">חשב פיצול אופטימלי 📊</button>
+            </div>
+          </form>
+
+          <div id="cart-split-result" class="cart-split-result hidden"></div>
+        </div>
+      </section>
+
+      <!-- TAB 3: Multimodal Image/URL Matcher (PRO) -->
+      <section id="multimodal-tab" class="tab-panel">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>זיהוי מוצר מתמונה או קישור <span class="pro-tag">PRO</span></h2>
+              <p class="muted">מופעל ע"י <span class="mono">gemini-3.5-flash-lite</span> (Vision + <span class="mono">url_context=True</span>) לחילוץ דגם, SKU והשוואת מחירים.</p>
+            </div>
+            <button id="load-multimodal-preset-btn" class="btn btn-outline btn-sm" type="button">טען קישור Amazon לדוגמה</button>
+          </div>
+
+          <form id="multimodal-form" class="stack-gap">
+            <div class="grid-2">
+              <div class="input-group">
+                <label for="mm-url">קישור לדף מוצר (URL)</label>
+                <input id="mm-url" type="url" placeholder="https://www.amazon.com/dp/B09XS7JWHH" />
+              </div>
+              <div class="input-group">
+                <label for="mm-hint">רמז טקסטואלי אופציונלי</label>
+                <input id="mm-hint" type="text" placeholder="לדוגמה: Sony WH-1000XM5 Midnight Blue" />
+              </div>
+            </div>
+
+            <div class="upload-box" id="mm-upload-box">
+              <input id="mm-file-input" type="file" accept="image/png,image/jpeg,image/webp" />
+              <div id="mm-upload-label">
+                <strong>העלה צילום מסך או תמונת מוצר</strong>
+                <span class="muted">PNG / JPG / WEBP — יישלח ל-Vision API כ-Base64</span>
+              </div>
+              <img id="mm-preview-img" class="mm-preview hidden" alt="תצוגה מקדימה" />
+            </div>
+
+            <div class="form-footer">
+              <button class="btn btn-primary" type="submit">זהה מוצר ומצא דילים 🔎</button>
+              <button id="mm-clear-btn" class="btn btn-ghost" type="button">נקה</button>
+            </div>
+          </form>
+
+          <div id="multimodal-result" class="stack-gap hidden"></div>
+        </div>
+      </section>
+
+      <!-- TAB 4: Watchlist, Coupons & Savings -->
+      <section id="watchlist-tab" class="tab-panel">
+        <div class="grid-2">
+          <!-- Savings Ledger -->
+          <div class="card">
+            <div class="card-header">
+              <h3>ארנק החיסכון שלי</h3>
+              <button id="refresh-savings-btn" class="btn btn-ghost btn-sm" type="button">רענן ↻</button>
+            </div>
+            <div id="savings-summary-box" class="stack-gap">
+              <div class="empty-state">התחבר כדי לצפות בנתוני החיסכון האישיים שלך.</div>
+            </div>
+          </div>
+
+          <!-- Crowd Coupon Feedback -->
+          <div class="card">
+            <div class="card-header">
+              <h3>דיווח קופון קהילתי (Crowd-Verified)</h3>
+            </div>
+            <p class="muted small">דיווח שלילי מוריד את ציון האמינות ב-Redis; קופון מתחת ל-35% נפסל אוטומטית.</p>
+            <form id="coupon-feedback-form" class="stack-gap">
+              <div class="grid-2">
+                <div class="input-group">
+                  <label for="cf-code">קוד קופון</label>
+                  <input id="cf-code" type="text" value="WELCOME10" required />
+                </div>
+                <div class="input-group">
+                  <label for="cf-store">חנות</label>
+                  <input id="cf-store" type="text" value="Amazon" required />
+                </div>
+              </div>
+              <div class="presets-bar">
+                <button class="coupon-chip" data-code="WELCOME10" data-store="Amazon" type="button">WELCOME10</button>
+                <button class="coupon-chip" data-code="HTZ12" data-store="Amazon" type="button">HTZ12</button>
+                <button class="coupon-chip" data-code="ASOS20" data-store="ASOS" type="button">ASOS20</button>
+                <button class="coupon-chip" data-code="BROKEN50" data-store="eBay" type="button">BROKEN50</button>
+              </div>
+              <div class="grid-2">
+                <div class="input-group">
+                  <label for="cf-worked">האם הקופון עבד?</label>
+                  <select id="cf-worked">
+                    <option value="true">✅ כן, הקופון עבד</option>
+                    <option value="false">❌ לא, הקופון שבור / פג תוקף</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label for="cf-cart-total">סכום סל ($ אופציונלי)</label>
+                  <input id="cf-cart-total" type="number" step="0.01" placeholder="250" />
+                </div>
+              </div>
+              <button class="btn btn-primary" type="submit">שלח דיווח קהילתי</button>
+            </form>
+            <div id="coupon-feedback-result" class="hidden"></div>
+          </div>
+        </div>
+
+        <!-- Watchlist + Kafka Trigger -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3>רשימת מעקב (Watchlist) והתראות ירידת מחיר (Kafka)</h3>
+              <p class="muted">FREE: עד 3 מוצרים (Email) | PRO: עד 50 מוצרים (Email, Telegram, Slack).</p>
+            </div>
+            <button id="refresh-watchlist-btn" class="btn btn-ghost btn-sm" type="button">רענן ↻</button>
+          </div>
+
+          <form id="watchlist-add-form" class="watchlist-form">
+            <input id="wl-product-id" type="text" placeholder="Product ID (למשל SONY-WH1000XM5)" value="SONY-WH1000XM5" required />
+            <input id="wl-sku" type="text" placeholder="SKU" value="SONY-WH1000XM5" required />
+            <input id="wl-title" type="text" placeholder="שם מוצר" value="Sony WH-1000XM5" required />
+            <input id="wl-store" type="text" placeholder="חנות" value="Amazon" />
+            <input id="wl-target-usd" type="number" step="1" placeholder="מחיר יעד ($)" value="275" />
+            <button class="btn btn-primary btn-sm" type="submit">+ הוסף למעקב</button>
+          </form>
+
+          <div id="watchlist-list" class="watchlist-list"></div>
+
+          <div class="kafka-box">
+            <h4>סימולציית אירוע ירידת מחיר ב-Kafka (<span class="mono">price-drop-events</span>)</h4>
+            <form id="kafka-trigger-form" class="watchlist-form">
+              <input id="kf-product-id" type="text" value="SONY-WH1000XM5" placeholder="Product ID" required />
+              <input id="kf-sku" type="text" value="SONY-WH1000XM5" placeholder="SKU" required />
+              <input id="kf-store" type="text" value="Amazon" placeholder="חנות" required />
+              <input id="kf-price-usd" type="number" step="0.01" value="239.00" placeholder="מחיר חדש ($)" required />
+              <button class="btn btn-warning btn-sm" type="submit">שדר אירוע ירידת מחיר ⚡</button>
+            </form>
+            <div id="kafka-trigger-result" class="hidden"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: Buyer Profile & Clubs Wallet -->
+      <section id="profile-tab" class="tab-panel">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <h3>פרופיל קונה וארנק מועדוני אשראי</h3>
+              <button id="refresh-profile-btn" class="btn btn-ghost btn-sm" type="button">טען מהשרת ↻</button>
+            </div>
+            <div class="alert alert-info">
+              🔒 <strong>אבטחה:</strong> שמור כאן שמות מועדונים בלבד. השרת חוסם אוטומטית (HTTP 422) כל ניסיון להזין מספרי כרטיס אשראי (13–19 ספרות).
+            </div>
+
+            <form id="profile-form" class="stack-gap">
+              <div>
+                <label class="block-label">מועדוני אשראי וצרכנות בבעלותך:</label>
+                <div class="clubs-grid">
+                  <label class="club-pill"><input type="checkbox" name="club" value="HitechZone" /> <span>הייטקזון (HitechZone)</span></label>
+                  <label class="club-pill"><input type="checkbox" name="club" value="Hever" /> <span>חבר (Hever)</span></label>
+                  <label class="club-pill"><input type="checkbox" name="club" value="FlyCard" /> <span>פליי קארד (FlyCard)</span></label>
+                  <label class="club-pill"><input type="checkbox" name="club" value="Max" /> <span>מקס (Max)</span></label>
+                  <label class="club-pill"><input type="checkbox" name="club" value="Isracard" /> <span>ישראכרט (Isracard)</span></label>
+                </div>
+              </div>
+
+              <div class="grid-3">
+                <div class="input-group">
+                  <label for="prof-currency">מטבע מועדף</label>
+                  <select id="prof-currency">
+                    <option value="ILS">ILS (₪)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label for="prof-country">ארץ משלוח</label>
+                  <select id="prof-country">
+                    <option value="IL">IL — ישראל</option>
+                    <option value="US">US — ארה״ב</option>
+                    <option value="GB">GB — בריטניה</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label for="prof-min-trust">סף אמינות מוכר (50–100)</label>
+                  <input id="prof-min-trust" type="number" min="50" max="100" value="75" />
+                </div>
+              </div>
+
+              <div class="grid-2">
+                <div class="input-group">
+                  <label for="prof-stores">חנויות מועדפות (מופרד בפסיק)</label>
+                  <input id="prof-stores" type="text" placeholder="Amazon, KSP, ASOS" />
+                </div>
+                <div class="input-group">
+                  <label for="prof-telegram">Telegram Chat ID (למסלול PRO)</label>
+                  <input id="prof-telegram" type="text" placeholder="לדוגמה: 123456789" />
+                </div>
+              </div>
+
+              <div>
+                <label class="block-label">ערוצי התראה:</label>
+                <div class="clubs-grid">
+                  <label class="club-pill"><input type="checkbox" name="channel" value="email" checked /> <span>Email</span></label>
+                  <label class="club-pill"><input type="checkbox" name="channel" value="telegram" /> <span>Telegram (PRO)</span></label>
+                  <label class="club-pill"><input type="checkbox" name="channel" value="slack" /> <span>Slack (PRO)</span></label>
+                </div>
+              </div>
+
+              <button class="btn btn-primary" type="submit">שמור פרופיל קונה 💾</button>
+            </form>
+          </div>
+
+          <!-- Search & Token Telemetry History -->
+          <div class="card">
+            <div class="card-header">
+              <h3>היסטוריית חיפושים ועלויות Gemini</h3>
+              <button id="refresh-history-btn" class="btn btn-ghost btn-sm" type="button">רענן ↻</button>
+            </div>
+            <div id="search-history-list" class="history-list">
+              <div class="empty-state">התחבר כדי לצפות בהיסטוריית החיפושים וצריכת הטוקנים.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Auth Modal -->
+  <div id="auth-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="auth-modal-title">גישת משתמש — DealScout AI</h3>
+        <button id="close-auth-modal" class="btn btn-ghost btn-sm" type="button">✕</button>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-auth-panel="login-panel" type="button">התחברות</button>
+        <button class="auth-tab" data-auth-panel="register-panel" type="button">הרשמה</button>
+        <button class="auth-tab" data-auth-panel="verify-panel" type="button">אימות מייל</button>
+      </div>
+
+      <!-- Login -->
+      <form id="login-form" class="auth-panel active stack-gap" data-panel="login-panel">
+        <div class="input-group">
+          <label for="login-email">אימייל</label>
+          <input id="login-email" type="email" placeholder="buyer@example.com" required />
+        </div>
+        <div class="input-group">
+          <label for="login-password">סיסמה</label>
+          <input id="login-password" type="password" placeholder="מינימום 10 תווים" required />
+        </div>
+        <button class="btn btn-primary" type="submit">התחבר</button>
+      </form>
+
+      <!-- Register -->
+      <form id="register-form" class="auth-panel stack-gap" data-panel="register-panel">
+        <div class="input-group">
+          <label for="reg-name">שם מלא</label>
+          <input id="reg-name" type="text" placeholder="ישראל ישראלי" required minlength="2" />
+        </div>
+        <div class="input-group">
+          <label for="reg-email">אימייל</label>
+          <input id="reg-email" type="email" placeholder="buyer@example.com" required />
+        </div>
+        <div class="input-group">
+          <label for="reg-password">סיסמה (מינימום 10 תווים)</label>
+          <input id="reg-password" type="password" minlength="10" required />
+        </div>
+        <button class="btn btn-primary" type="submit">צור חשבון חדש</button>
+      </form>
+
+      <!-- Verify Email -->
+      <form id="verify-form" class="auth-panel stack-gap" data-panel="verify-panel">
+        <div class="input-group">
+          <label for="verify-token">טוקן אימות אימייל</label>
+          <input id="verify-token" type="text" placeholder="הדבק את ה-verification_token" required minlength="8" />
+        </div>
+        <button class="btn btn-primary" type="submit">אמת כתובת מייל ✓</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- HITL Checkout Approval Modal -->
+  <div id="hitl-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>🛡️ שער אישור אנושי (HITL Checkout Gate)</h3>
+        <button id="close-hitl-modal" class="btn btn-ghost btn-sm" type="button">✕</button>
+      </div>
+      <div id="hitl-modal-body" class="stack-gap"></div>
+    </div>
+  </div>
+
+  <!-- Price History Modal -->
+  <div id="history-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card modal-wide">
+      <div class="modal-header">
+        <h3>📈 היסטוריית מחירים 90 יום</h3>
+        <button id="close-history-modal" class="btn btn-ghost btn-sm" type="button">✕</button>
+      </div>
+      <div id="history-modal-body" class="stack-gap"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

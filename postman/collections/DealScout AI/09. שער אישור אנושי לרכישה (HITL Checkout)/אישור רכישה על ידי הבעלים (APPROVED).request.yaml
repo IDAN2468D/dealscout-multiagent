@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/deals/approve-checkout"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "approval_id": "{{approval_id}}",
+      "decision": "APPROVED",
+      "user_note": "אושר על ידי המשתמש דרך Postman"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('הבעלים מאשר את הרכישה בהצלחה (APPROVED)', function () {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().status).to.eql('APPROVED');
+      });
+    language: text/javascript
+order: 2000

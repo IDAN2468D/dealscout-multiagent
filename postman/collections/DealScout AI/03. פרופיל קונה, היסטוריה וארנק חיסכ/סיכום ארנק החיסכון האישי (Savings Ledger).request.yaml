@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/users/me/savings"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('מחזיר סיכום חיסכון מצטבר בש"ח', function () {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json()).to.have.property('total_saved_ils');
+      });
+    language: text/javascript
+order: 6000

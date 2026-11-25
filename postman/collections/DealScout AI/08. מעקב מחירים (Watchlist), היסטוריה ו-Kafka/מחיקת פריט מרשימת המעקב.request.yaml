@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/watchlist/{{watchlist_id}}"
+method: DELETE
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('מוחק בהצלחה פריט בבעלות המשתמש (200)', function () {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().deleted).to.eql(true);
+      });
+    language: text/javascript
+order: 5000

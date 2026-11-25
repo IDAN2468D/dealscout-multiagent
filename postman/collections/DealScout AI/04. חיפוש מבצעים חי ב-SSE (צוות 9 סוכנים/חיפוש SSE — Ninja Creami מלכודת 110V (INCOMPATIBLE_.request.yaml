@@ -1,0 +1,24 @@
+$kind: http-request
+name: חיפוש SSE — Ninja Creami מלכודת 110V (INCOMPATIBLE_SPEC)
+url: "{{base_url}}/api/v1/deals/search"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: text/event-stream
+body:
+  type: text
+  content: |-
+    {
+      "query": "Ninja Creami",
+      "override_ship_to": "IL",
+      "use_saved_profile": true
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('מסמן INCOMPATIBLE_SPEC עבור מוצר 110V לישראל', function () {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.text()).to.include('INCOMPATIBLE_SPEC');
+      });
+    language: text/javascript
+order: 2000

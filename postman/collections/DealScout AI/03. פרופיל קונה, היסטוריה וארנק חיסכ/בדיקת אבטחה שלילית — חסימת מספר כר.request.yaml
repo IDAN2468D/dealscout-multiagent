@@ -1,0 +1,25 @@
+$kind: http-request
+name: בדיקת אבטחה שלילית — חסימת מספר כרטיס אשראי (422)
+url: "{{base_url}}/api/v1/users/me/profile"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "preferred_currency": "ILS",
+      "ship_to_country": "IL",
+      "credit_card_clubs": ["4580123456789012"],
+      "preferred_stores": ["Amazon"],
+      "min_seller_trust": 75,
+      "notification_channels": ["email"]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('דוחה מספר כרטיס אשראי גולמי עם קוד 422', function () {
+        pm.response.to.have.status(422);
+      });
+    language: text/javascript
+order: 4000
