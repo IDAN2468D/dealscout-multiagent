@@ -83,29 +83,28 @@
 
 ## 🚀 Quick Start
 
-### Option A: Local `.venv` Development (Fastest for Evaluation)
+### Option A: Local Development (Backend `:8020` + Next.js 15 Frontend `:3000`)
 
-> Works cleanly with SQLite + `fakeredis` + in-memory ES/Chroma fallbacks when Docker containers aren't running, or connects to Docker infra automatically when running.
+> Backend works cleanly with SQLite + `fakeredis` + in-memory ES/Chroma fallbacks when Docker containers aren't running, or connects to Docker infra automatically when running.
 
 ```powershell
-# 1. Activate virtual environment (Windows PowerShell)
-cd C:\Users\kazam\Desktop\App\dealscout-multiagent
-.\.venv\Scripts\Activate.ps1
-
-# 2. Configure environment (copy .env.example -> .env and optionally set GOOGLE_API_KEY)
+# 1. Configure root environment (copy .env.example -> .env and set GOOGLE_API_KEY for live Gemini features)
 copy .env.example .env
 
-# 3. Install dependencies (if not already installed)
+# 2. Activate Python virtual environment & start Backend API on port 8020
+.\.venv\Scripts\Activate.ps1
 pip install -r backend/requirements.txt
-
-# 4. Run database migrations (optional if using auto-init on startup)
 alembic -c backend/alembic.ini upgrade head
-
-# 5. Start the FastAPI server + RTL Hebrew Web UI on port 8020
 uvicorn backend.app.main:app --host 0.0.0.0 --port 8020 --reload
+
+# 3. In a second terminal, start the Next.js 15 RTL Hebrew Frontend on port 3000
+cd frontend
+copy .env.example .env.local
+npm install
+npm run dev
 ```
 
-Open **http://localhost:8020/** in your browser for the RTL Hebrew SaaS UI, or **http://localhost:8020/docs** for OpenAPI Swagger docs.
+Open **http://localhost:3000/** in your browser for the Next.js 15 RTL Hebrew SaaS UI, or **http://localhost:8020/docs** for OpenAPI Swagger docs.
 
 ### Option B: Full Stack via Docker Compose
 
@@ -147,11 +146,14 @@ Import `postman/dealscout-multiagent.postman_collection.json` and `postman/deals
 ## 🧪 Running Tests & Verification Suite
 
 ```powershell
-# Run Pytest unit & integration tests
+# Backend: Run Pytest unit & integration tests
 .\.venv\Scripts\pytest.exe backend/tests -v
 
-# Run full end-to-end verification suite
+# Backend: Run full end-to-end verification suite
 .\.venv\Scripts\python.exe .agents/scripts/verify_dealscout_suite.py
+
+# Frontend: Run TypeScript typecheck, Vitest unit/component tests, and Playwright E2E
+cd frontend && npm run typecheck && npm run test && npx playwright test
 ```
 
 For full walkthroughs and 5 ready-to-run demo scenarios, see [`.agents/docs/STEP_BY_STEP_EXECUTION_GUIDE.md`](.agents/docs/STEP_BY_STEP_EXECUTION_GUIDE.md).
