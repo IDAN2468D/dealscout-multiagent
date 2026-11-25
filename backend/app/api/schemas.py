@@ -24,6 +24,7 @@ class UserBuyerProfileUpdate(BaseModel):
         default_factory=lambda: ["email"]
     )
     telegram_chat_id: Optional[str] = None
+    long_term_preferences: Optional[dict[str, Any]] = None
 
 
 class UserBuyerProfileOut(UserBuyerProfileUpdate):
@@ -93,6 +94,8 @@ class UserMeResponse(BaseModel):
     role: TierType
     tier: TierType
     is_verified: bool
+    daily_searches_used: int = 0
+    daily_searches_limit: int = 10
     buyer_profile: UserBuyerProfileOut
 
 
@@ -332,3 +335,8 @@ class PriceDropTriggerRequest(BaseModel):
 
 class AdminTierUpdateRequest(BaseModel):
     tier: TierType
+
+
+class CouponModerationRequest(BaseModel):
+    store_name: str
+    action: Literal["suppress", "restore"]

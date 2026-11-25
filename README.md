@@ -116,7 +116,9 @@ docker compose up --build -d
 
 | Service | Host Port | Purpose |
 | :--- | :---: | :--- |
-| `dealscout-backend` | `8020` | FastAPI API + SSE + RTL Hebrew Web UI (`/`) |
+| `dealscout-frontend` | `3000` | Next.js 15 RTL Hebrew App Router UI (`http://localhost:3000`) |
+| `dealscout-backend` | `8020` | FastAPI API + SSE + Swagger Docs (`/docs`) |
+| `kafka-ui` | `8085` | Kafka UI for `price-drop-events` & `deal-alerts` (`http://localhost:8085`) |
 | `postgres` (PostgreSQL 16) | `5434` | Users, profiles, price history, watchlists, approvals, audit & LLM costs |
 | `redis` (Redis 7) | `6381` | Rate limiter, JTI/family revocation, crowd coupon scores, FX cache |
 | `elasticsearch` (8.15.0) | `9202` | Fuzzy product catalog search |

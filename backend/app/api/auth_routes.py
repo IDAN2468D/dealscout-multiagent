@@ -290,14 +290,14 @@ async def oauth_google_login(
     request: Request,
     email: Optional[str] = Query(default=None),
     mock: bool = Query(default=False),
+    frontend_callback: Optional[str] = Query(default=None),
 ):
     """Initiate Google OAuth2 login (uses offline deterministic redirect in dev/test mode)."""
     if mock or _is_mock_oauth_allowed() or "session" not in request.scope:
         target_email = email or "google.user@dealscout.ai"
-        callback_url = (
-            f"/api/v1/auth/oauth/google/callback"
-            f"?code=mock_google_auth_code&email={target_email}"
-        )
+        target_base = frontend_callback or "/api/v1/auth/oauth/google/callback"
+        sep = "&" if "?" in target_base else "?"
+        callback_url = f"{target_base}{sep}code=mock_google_auth_code&email={target_email}"
         return RedirectResponse(url=callback_url, status_code=status.HTTP_302_FOUND)
 
     return await oauth.google.authorize_redirect(request, settings.GOOGLE_REDIRECT_URI)

@@ -17,10 +17,11 @@ from backend.app.api.schemas import (
     UserContext,
     UserMeResponse,
 )
-from backend.app.core.redis_client import cache_buyer_profile
+from backend.app.core.redis_client import TIER_RATE_LIMITS, cache_buyer_profile, get_redis_client
 from backend.app.core.security import build_profile_cache_payload, get_current_user_context
 from backend.app.db.models import User, UserBuyerProfile, UserSavingsLedger, UserSearchHistory
 from backend.app.db.session import get_db
+from backend.app.rag.promo_policy_store import PromoPolicyStore
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
@@ -81,6 +82,12 @@ def get_me(
             detail="User not found",
         )
     profile = _get_or_create_profile(db, user.id)
+    limit_val, _ = TIER_RATE_LIMITS.get(user.tier.upper(), (10, 86400))
+    daily_limit = int(limit_val) if limit_val is not None else 9999
+    try:
+        used_count = int(get_redis_client().zcard(f"ratelimit:{user.id}") or 0)
+    except Exception:
+        used_count = 0
     return UserMeResponse(
         user_id=user.id,
         email=user.email,
@@ -88,6 +95,8 @@ def get_me(
         role=user.role,  # type: ignore[arg-type]
         tier=user.tier,  # type: ignore[arg-type]
         is_verified=user.is_verified,
+        daily_searches_used=used_count,
+        daily_searches_limit=daily_limit,
         buyer_profile=_to_profile_out(profile),
     )
 
@@ -126,6 +135,16 @@ def update_my_profile(
     profile.min_seller_trust = payload.min_seller_trust
     profile.notification_channels_json = list(payload.notification_channels)
     profile.telegram_chat_id = payload.telegram_chat_id
+    if payload.long_term_preferences is not None:
+        merged_prefs = dict(profile.long_term_preferences_json or {})
+        merged_prefs.update(payload.long_term_preferences)
+        profile.long_term_preferences_json = merged_prefs
+        try:
+            summary = ", ".join(f"{k}={v}" for k, v in payload.long_term_preferences.items())
+            if summary:
+                PromoPolicyStore().add_user_preference(ctx.user_id, summary, category="profile")
+        except Exception:
+            pass
 
     db.commit()
     db.refresh(profile)

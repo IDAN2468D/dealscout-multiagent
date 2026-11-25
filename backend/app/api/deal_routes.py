@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import base64
 import json
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -89,11 +90,50 @@ async def search_deals_sse(
 
 @router.post("/deals/match-from-image", response_model=MatchFromImageResponse)
 async def match_deals_from_image_or_url(
-    payload: MatchFromImageRequest,
+    request: Request,
     ctx: UserContext = Depends(require_tier("PRO")),
     db: Session = Depends(get_db),
 ) -> MatchFromImageResponse:
-    """PRO-only multimodal Vision / URL Context product identifier + deal matcher."""
+    """PRO-only multimodal Vision / URL Context product identifier + deal matcher.
+
+    Accepts both JSON (`MatchFromImageRequest`) and `multipart/form-data` uploads.
+    """
+    content_type = (request.headers.get("content-type") or "").lower()
+    if "multipart/form-data" in content_type:
+        form = await request.form()
+        product_url = str(form.get("product_url") or "").strip() or None
+        hint_text = str(form.get("hint_text") or "").strip() or None
+        image_base64: str | None = None
+        image_mime = "image/png"
+        uploaded = form.get("file") or form.get("image")
+        if uploaded is not None and hasattr(uploaded, "read"):
+            raw_bytes = await uploaded.read()
+            if len(raw_bytes) > 5 * 1024 * 1024:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail="Image file exceeds 5MB limit.",
+                )
+            if raw_bytes:
+                image_base64 = base64.b64encode(raw_bytes).decode("ascii")
+                image_mime = getattr(uploaded, "content_type", None) or "image/png"
+                if not hint_text and getattr(uploaded, "filename", None):
+                    hint_text = str(uploaded.filename)
+        payload = MatchFromImageRequest(
+            product_url=product_url,
+            image_base64=image_base64,
+            image_mime_type=image_mime,
+            hint_text=hint_text,
+        )
+    else:
+        try:
+            body_json = await request.json()
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid JSON payload.",
+            ) from exc
+        payload = MatchFromImageRequest.model_validate(body_json)
+
     if not payload.product_url and not payload.image_base64 and not payload.hint_text:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -440,3 +480,34 @@ async def trigger_price_drop_demo(
         "total_alerts_dispatched": len(alerts),
         "user_alerts": visible_alerts,
     }
+
+
+@router.get("/deals/alerts")
+def list_user_price_alerts(
+    limit: int = Query(default=30, ge=1, le=100),
+    ctx: UserContext = Depends(get_current_user_context),
+    db: Session = Depends(get_db),
+) -> list[dict[str, Any]]:
+    """Return Kafka price-drop alerts scoped strictly to the authenticated user."""
+    rows = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.user_id == ctx.user_id,
+            AuditLog.event_type == "PRICE_ALERT_SENT",
+        )
+        .order_by(AuditLog.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "product_id": r.resource_id,
+            "store_name": (r.details_json or {}).get("store_name", ""),
+            "new_price_usd": (r.details_json or {}).get("new_price_usd", 0.0),
+            "new_price_ils": (r.details_json or {}).get("new_price_ils", 0.0),
+            "channels": (r.details_json or {}).get("channels", ["email"]),
+            "created_at": r.created_at.isoformat(),
+        }
+        for r in rows
+    ]
