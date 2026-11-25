@@ -1,0 +1,8 @@
+cloudResources:
+  collections:
+    ../postman/collections/DealScout AI: 13046260-979d736b-53a5-4ea7-85d4-8afe5734fb70
+  environments:
+    ../postman/environments/DealScout AI Local.environment.yaml: 13046260-b1207c81-3584-442b-98c8-80f3f2d14a6b
+workspace:
+  id: 02d0d56d-16c3-4a3e-b35d-569ce28ae0b2
+  name: DealScout AI

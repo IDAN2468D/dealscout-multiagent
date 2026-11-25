@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/mcp/tools"
+method: GET
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('מחזיר 3 שרתי MCP ו-10 כלים רשומים', function () {
+        pm.response.to.have.status(200);
+        const d = pm.response.json();
+        pm.expect(d.total_servers).to.eql(3);
+        pm.expect(d.total_tools).to.eql(10);
+      });
+    language: text/javascript
+order: 2000

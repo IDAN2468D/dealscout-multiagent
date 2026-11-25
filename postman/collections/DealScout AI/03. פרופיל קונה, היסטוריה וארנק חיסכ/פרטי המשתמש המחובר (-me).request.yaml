@@ -1,0 +1,15 @@
+$kind: http-request
+name: פרטי המשתמש המחובר (/me)
+url: "{{base_url}}/api/v1/users/me"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('מחזיר משתמש מאומת ופרופיל קונה', function () {
+        pm.response.to.have.status(200);
+        const d = pm.response.json();
+        pm.expect(d.user_id).to.eql(pm.environment.get('user_id'));
+        pm.expect(d.buyer_profile).to.be.an('object');
+      });
+    language: text/javascript
+order: 1000

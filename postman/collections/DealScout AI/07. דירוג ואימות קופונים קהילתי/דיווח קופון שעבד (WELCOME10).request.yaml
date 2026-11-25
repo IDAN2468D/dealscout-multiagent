@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/coupons/WELCOME10/feedback"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "store_name": "Amazon",
+      "worked": true,
+      "cart_total_usd": 268.0
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('רושם הצבעה חיובית ומעדכן success_rate', function () {
+        pm.response.to.have.status(200);
+        const d = pm.response.json();
+        pm.expect(d.coupon_code).to.eql('WELCOME10');
+        pm.expect(d.success_rate).to.be.above(0.35);
+      });
+    language: text/javascript
+order: 1000

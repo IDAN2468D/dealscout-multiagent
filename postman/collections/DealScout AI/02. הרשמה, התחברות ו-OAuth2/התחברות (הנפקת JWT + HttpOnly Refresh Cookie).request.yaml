@@ -1,0 +1,27 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "{{user_email}}",
+      "password": "{{user_password}}"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('התחברות מחזירה access_token תקין', function () {
+        pm.response.to.have.status(200);
+        const d = pm.response.json();
+        pm.expect(d.access_token).to.be.a('string').and.not.be.empty;
+        pm.environment.set('access_token', d.access_token);
+        pm.environment.set('user_id', d.user_id);
+        pm.environment.set('user_tier', d.tier);
+      });
+    language: text/javascript
+order: 3000

@@ -1,0 +1,160 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dealscout-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dealscout}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dealscout_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-dealscout}
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dealscout} -d ${POSTGRES_DB:-dealscout}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: dealscout-redis
+    restart: unless-stopped
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: dealscout-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9202:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: dealscout-kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    ports:
+      - "9095:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: dealscout-kafka-ui
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: dealscout-kafka
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "true"
+    depends_on:
+      - kafka
+
+  chromadb:
+    image: chromadb/chroma:0.6.3
+    container_name: dealscout-chromadb
+    restart: unless-stopped
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    ports:
+      - "8005:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+
+  dealscout-backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: dealscout-backend
+    restart: unless-stopped
+    ports:
+      - "8020:8000"
+    environment:
+      APP_NAME: dealscout-multiagent
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GEMINI_ORCHESTRATOR_MODEL: ${GEMINI_ORCHESTRATOR_MODEL:-gemini-3.5-flash-lite}
+      GEMINI_SUBAGENT_MODEL: ${GEMINI_SUBAGENT_MODEL:-gemini-3.5-flash-lite}
+      LLM_EXECUTION_MODE: ${LLM_EXECUTION_MODE:-auto}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-dealscout}:${POSTGRES_PASSWORD:-dealscout_pass}@postgres:5432/${POSTGRES_DB:-dealscout}
+      REDIS_URL: redis://redis:6379/0
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      CHROMA_PERSIST_DIR: /app/data/chroma
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dealscout-dev-secret-key-min-32-chars-2026}
+      NOTIFY_MODE: ${NOTIFY_MODE:-mock}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_started
+      kafka:
+        condition: service_started
+      chromadb:
+        condition: service_started
+    volumes:
+      - backend_chroma:/app/data/chroma
+
+  dealscout-frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: dealscout-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8020
+      BACKEND_INTERNAL_URL: http://dealscout-backend:8000
+      NEXT_PUBLIC_ENABLE_MOCK_FALLBACK: "false"
+      NEXT_PUBLIC_APP_ENV: production
+    depends_on:
+      - dealscout-backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  es_data:
+  kafka_data:
+  chroma_data:
+  backend_chroma:

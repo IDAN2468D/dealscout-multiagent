@@ -1,0 +1,24 @@
+$kind: http-request
+name: חיפוש SSE — Samsung T7 מבצע פיקטיבי (FAKE_DISCOUNT)
+url: "{{base_url}}/api/v1/deals/search"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: text/event-stream
+body:
+  type: text
+  content: |-
+    {
+      "query": "Samsung T7 Shield 2TB",
+      "override_ship_to": "IL",
+      "use_saved_profile": true
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('מזהה ומסמן FAKE_DISCOUNT עבור העלאת מחיר מלאכותית', function () {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.text()).to.include('FAKE_DISCOUNT');
+      });
+    language: text/javascript
+order: 3000

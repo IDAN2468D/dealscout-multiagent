@@ -1,0 +1,17 @@
+$kind: http-request
+name: היסטוריית מחירים 90 יום (זיהוי Fake Discount)
+url: "{{base_url}}/api/v1/deals/SAM-T7-2TB/history?store_name=eBay"
+method: GET
+queryParams:
+  store_name: eBay
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('מזהה זינוק מחיר מעל 15% על SAM-T7-2TB ב-eBay', function () {
+        pm.response.to.have.status(200);
+        const d = pm.response.json();
+        pm.expect(d.fake_discount_flag).to.eql(true);
+        pm.expect(d.spike_pct).to.be.above(15);
+      });
+    language: text/javascript
+order: 3000

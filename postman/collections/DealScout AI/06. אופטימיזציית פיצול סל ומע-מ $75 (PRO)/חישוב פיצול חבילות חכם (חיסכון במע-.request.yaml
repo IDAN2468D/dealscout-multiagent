@@ -1,0 +1,47 @@
+$kind: http-request
+name: חישוב פיצול חבילות חכם (חיסכון במע"מ ישראלי 18%)
+url: "{{base_url}}/api/v1/cart/optimize-split"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "store_name": "ASOS",
+      "ship_to_country": "IL",
+      "shipping_per_package_usd": 8.0,
+      "free_shipping_threshold_usd": 49.0,
+      "items": [
+        {
+          "sku": "NIKE-PEG41",
+          "title": "Nike Pegasus 41",
+          "store_name": "ASOS",
+          "unit_price_usd": 58.0,
+          "quantity": 1
+        },
+        {
+          "sku": "ADIDAS-UB5",
+          "title": "Adidas Ultraboost 5",
+          "store_name": "ASOS",
+          "unit_price_usd": 64.0,
+          "quantity": 1
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('מחשב SPLIT_PACKAGES למשתמש PRO או חוסם 403 ל-FREE', function () {
+        const tier = pm.environment.get('user_tier') || 'FREE';
+        if (tier === 'FREE') {
+          pm.response.to.have.status(403);
+        } else {
+          pm.response.to.have.status(200);
+          const d = pm.response.json();
+          pm.expect(d.recommended_strategy).to.eql('SPLIT_PACKAGES');
+          pm.expect(d.saved_ils).to.be.above(0);
+        }
+      });
+    language: text/javascript
+order: 1000

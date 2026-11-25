@@ -1,0 +1,28 @@
+$kind: http-request
+name: זיהוי מוצר מתמונת Base64 (200 ל-PRO / 403 ל-FREE)
+url: "{{base_url}}/api/v1/deals/match-from-image"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "image_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      "image_mime_type": "image/png",
+      "hint_text": "Samsung T7 Shield 2TB"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('מחלץ SKU מתמונה ל-PRO או חוסם ב-403 ל-FREE', function () {
+        const tier = pm.environment.get('user_tier') || 'FREE';
+        if (tier === 'FREE') {
+          pm.response.to.have.status(403);
+        } else {
+          pm.response.to.have.status(200);
+          pm.expect(pm.response.json().detected_sku).to.be.a('string').and.not.be.empty;
+        }
+      });
+    language: text/javascript
+order: 2000

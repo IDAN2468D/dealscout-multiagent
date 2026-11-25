@@ -1,0 +1,28 @@
+$kind: http-request
+name: חיפוש SSE — Sony WH-1000XM5 (עסקה מעולה + קופון מועדון)
+url: "{{base_url}}/api/v1/deals/search"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: text/event-stream
+body:
+  type: text
+  content: |-
+    {
+      "query": "Sony WH-1000XM5",
+      "max_budget_ils": 1500,
+      "override_ship_to": "IL",
+      "use_saved_profile": true
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('זרם SSE מחזיר 200, דוח סופי וקופון HTZ12', function () {
+        pm.response.to.have.status(200);
+        const body = pm.response.text();
+        pm.expect(body).to.include('event: agent_step');
+        pm.expect(body).to.include('event: final_report');
+        pm.expect(body).to.include('HTZ12');
+      });
+    language: text/javascript
+order: 1000

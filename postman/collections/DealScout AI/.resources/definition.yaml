@@ -1,0 +1,10 @@
+$kind: collection
+id: a73bc67f-960f-426d-829a-dcef1beef3f3
+name: DealScout AI — קולקציית API מלאה (v2.1)
+description: 'קולקציית Postman מלאה בעברית עבור DealScout AI (dealscout-multiagent v2.1): בדיקת תקינות ושרתי MCP, הרשמה והתחברות (Argon2id + JWT + רוטציית טוקנים + Google OAuth2), פרופיל קונה וארנק מועדונים, חיפוש מבצעים חי ב-SSE (צוות 9 סוכנים על gemini-3.5-flash-lite), זיהוי מוצר מתמונה/קישור (PRO), אופטימיזציית פיצול סל לחיסכון במע"מ מעל $75 (PRO), אימות קופונים קהילתי, Watchlist והיסטוריית מחירים, שער אישור HITL לרכישה, התראות ירידת מחיר ב-Kafka, ניטור עלויות אדמין והתנתקות.'
+auth:
+  - id: cf63be6b-cf47-4dcb-ae7f-82cef66436c6
+    type: bearer
+    name: bearer auth
+    credentials:
+      token: "{{access_token}}"

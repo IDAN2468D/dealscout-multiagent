@@ -1,0 +1,57 @@
+name: DealScout AI מקומי (פורט 8020)
+values:
+  - key: base_url
+    value: 'http://localhost:8020'
+    enabled: true
+    type: default
+    description: כתובת שרת ה-FastAPI המקומי של DealScout AI (Docker או Uvicorn)
+  - key: access_token
+    value: ''
+    enabled: true
+    type: secret
+    description: טוקן JWT Bearer המתעדכן אוטומטית לאחר התחברות או רענון
+  - key: refresh_token
+    value: ''
+    enabled: true
+    type: secret
+    description: טוקן רענון אופציונלי ללקוחות שאינם משתמשים ב-Cookie
+  - key: verification_token
+    value: ''
+    enabled: true
+    type: default
+    description: טוקן אימות אימייל המתמלא אוטומטית לאחר הרשמה
+  - key: user_id
+    value: ''
+    enabled: true
+    type: default
+    description: מזהה המשתמש המאומת (UUID)
+  - key: user_tier
+    value: 'FREE'
+    enabled: true
+    type: default
+    description: מסלול המשתמש הנוכחי (FREE, PRO או ADMIN)
+  - key: approval_id
+    value: ''
+    enabled: true
+    type: default
+    description: מזהה בקשת אישור HITL לרכישה
+  - key: watchlist_id
+    value: ''
+    enabled: true
+    type: default
+    description: מזהה פריט במעקב המחירים (Watchlist)
+  - key: product_id
+    value: 'prod_sony_xm5'
+    enabled: true
+    type: default
+    description: מזהה מוצר ברירת מחדל לדוגמאות
+  - key: user_email
+    value: 'evaluator@dealscout.ai'
+    enabled: true
+    type: default
+    description: כתובת אימייל (מתעדכנת אוטומטית לאימייל ייחודי בכל הרשמה)
+  - key: user_password
+    value: 'DealScout!2026Strong'
+    enabled: true
+    type: secret
+    description: סיסמת משתמש לבדיקות (מינימום 10 תווים)

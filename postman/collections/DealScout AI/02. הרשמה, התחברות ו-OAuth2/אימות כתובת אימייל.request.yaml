@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/auth/verify-email"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "token": "{{verification_token}}"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('אימות אימייל הצליח (200)', function () {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().verified).to.eql(true);
+      });
+    language: text/javascript
+order: 2000

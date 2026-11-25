@@ -1,0 +1,1103 @@
+{
+  "info": {
+    "_postman_id": "a73bc67f-960f-426d-829a-dcef1beef3f3",
+    "name": "DealScout AI — קולקציית API מלאה (v2.1)",
+    "description": "קולקציית Postman מלאה בעברית עבור DealScout AI (dealscout-multiagent v2.1): בדיקת תקינות ושרתי MCP, הרשמה והתחברות (Argon2id + JWT + רוטציית טוקנים + Google OAuth2), פרופיל קונה וארנק מועדונים, חיפוש מבצעים חי ב-SSE (צוות 9 סוכנים על gemini-3.5-flash-lite), זיהוי מוצר מתמונה/קישור (PRO), אופטימיזציית פיצול סל לחיסכון במע\"מ מעל $75 (PRO), אימות קופונים קהילתי, Watchlist והיסטוריית מחירים, שער אישור HITL לרכישה, התראות ירידת מחיר ב-Kafka, ניטור עלויות אדמין והתנתקות.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "01. תקינות מערכת ושרתי MCP",
+      "item": [
+        {
+          "name": "בדיקת תקינות שרת (Health Check)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('סטטוס 200 והשרת תקין עם gemini-3.5-flash-lite', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.status).to.eql('healthy');",
+                  "  pm.expect(d.model).to.eql('gemini-3.5-flash-lite');",
+                  "  pm.expect(d.mcp_servers).to.have.lengthOf(3);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "רשימת שרתי וכלי MCP (3 שרתים, 10 כלים)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('מחזיר 3 שרתי MCP ו-10 כלים רשומים', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.total_servers).to.eql(3);",
+                  "  pm.expect(d.total_tools).to.eql(10);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/mcp/tools",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "mcp", "tools"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. הרשמה, התחברות ו-OAuth2",
+      "item": [
+        {
+          "name": "הרשמת משתמש חדש",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const uniqueEmail = `buyer_${Date.now()}@dealscout.ai`;",
+                  "pm.environment.set('user_email', uniqueEmail);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('משתמש נרשם בהצלחה (201) והונפק טוקן אימות', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.verification_token).to.be.a('string').and.not.be.empty;",
+                  "  pm.environment.set('verification_token', d.verification_token);",
+                  "  pm.environment.set('user_id', d.user_id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\",\n  \"full_name\": \"בודק DealScout\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "אימות כתובת אימייל",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('אימות אימייל הצליח (200)', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().verified).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{verification_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/verify-email",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "verify-email"]
+            }
+          }
+        },
+        {
+          "name": "התחברות (הנפקת JWT + HttpOnly Refresh Cookie)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('התחברות מחזירה access_token תקין', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.access_token).to.be.a('string').and.not.be.empty;",
+                  "  pm.environment.set('access_token', d.access_token);",
+                  "  pm.environment.set('user_id', d.user_id);",
+                  "  pm.environment.set('user_tier', d.tier);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "רענון טוקן (Token Rotation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('רענון טוקן מבצע רוטציה ומנפיק access_token חדש', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.access_token).to.be.a('string').and.not.be.empty;",
+                  "  pm.environment.set('access_token', d.access_token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "התחברות Google OAuth2 (סימולציית פיתוח)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Callback של Google OAuth2 מנפיק JWT', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().access_token).to.be.a('string').and.not.be.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/oauth/google/callback?code=mock_google_code&email=oauth.user@dealscout.ai",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "oauth", "google", "callback"],
+              "query": [
+                { "key": "code", "value": "mock_google_code" },
+                { "key": "email", "value": "oauth.user@dealscout.ai" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. פרופיל קונה, היסטוריה וארנק חיסכון",
+      "item": [
+        {
+          "name": "פרטי המשתמש המחובר (/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('מחזיר משתמש מאומת ופרופיל קונה', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.user_id).to.eql(pm.environment.get('user_id'));",
+                  "  pm.expect(d.buyer_profile).to.be.an('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "me"]
+            }
+          }
+        },
+        {
+          "name": "שליפת פרופיל קונה וארנק מועדונים",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('סטטוס 200 ומדינת יעד מוגדרת', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().ship_to_country).to.be.a('string');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "me", "profile"]
+            }
+          }
+        },
+        {
+          "name": "עדכון פרופיל קונה (מועדוני אשראי: הייטקזון, חבר, פליי קארד, מקס)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('מעדכן בהצלחה את מועדוני האשראי', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().credit_card_clubs).to.include('HitechZone');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"preferred_currency\": \"ILS\",\n  \"ship_to_country\": \"IL\",\n  \"credit_card_clubs\": [\"HitechZone\", \"Hever\", \"FlyCard\", \"Max\"],\n  \"preferred_stores\": [\"Amazon\", \"KSP\", \"ASOS\"],\n  \"min_seller_trust\": 75,\n  \"notification_channels\": [\"email\", \"telegram\"],\n  \"telegram_chat_id\": \"987654321\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "me", "profile"]
+            }
+          }
+        },
+        {
+          "name": "בדיקת אבטחה שלילית — חסימת מספר כרטיס אשראי (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('דוחה מספר כרטיס אשראי גולמי עם קוד 422', function () {",
+                  "  pm.response.to.have.status(422);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"preferred_currency\": \"ILS\",\n  \"ship_to_country\": \"IL\",\n  \"credit_card_clubs\": [\"4580123456789012\"],\n  \"preferred_stores\": [\"Amazon\"],\n  \"min_seller_trust\": 75,\n  \"notification_channels\": [\"email\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "me", "profile"]
+            }
+          }
+        },
+        {
+          "name": "היסטוריית חיפושים וניטור עלויות Gemini",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('מחזיר מערך היסטוריית חיפושים של המשתמש', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me/history",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "me", "history"]
+            }
+          }
+        },
+        {
+          "name": "סיכום ארנק החיסכון האישי (Savings Ledger)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('מחזיר סיכום חיסכון מצטבר בש\"ח', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.have.property('total_saved_ils');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me/savings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "me", "savings"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. חיפוש מבצעים חי ב-SSE (צוות 9 סוכנים)",
+      "item": [
+        {
+          "name": "חיפוש SSE — Sony WH-1000XM5 (עסקה מעולה + קופון מועדון)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('זרם SSE מחזיר 200, דוח סופי וקופון HTZ12', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.text();",
+                  "  pm.expect(body).to.include('event: agent_step');",
+                  "  pm.expect(body).to.include('event: final_report');",
+                  "  pm.expect(body).to.include('HTZ12');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Sony WH-1000XM5\",\n  \"max_budget_ils\": 1500,\n  \"override_ship_to\": \"IL\",\n  \"use_saved_profile\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/deals/search",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "deals", "search"]
+            }
+          }
+        },
+        {
+          "name": "חיפוש SSE — Ninja Creami מלכודת 110V (INCOMPATIBLE_SPEC)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('מסמן INCOMPATIBLE_SPEC עבור מוצר 110V לישראל', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.text()).to.include('INCOMPATIBLE_SPEC');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Ninja Creami\",\n  \"override_ship_to\": \"IL\",\n  \"use_saved_profile\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/deals/search",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "deals", "search"]
+            }
+          }
+        },
+        {
+          "name": "חיפוש SSE — Samsung T7 מבצע פיקטיבי (FAKE_DISCOUNT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('מזהה ומסמן FAKE_DISCOUNT עבור העלאת מחיר מלאכותית', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.text()).to.include('FAKE_DISCOUNT');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Samsung T7 Shield 2TB\",\n  \"override_ship_to\": \"IL\",\n  \"use_saved_profile\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/deals/search",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "deals", "search"]
+            }
+          }
+        },
+        {
+          "name": "חיפוש SSE — AirPods Pro הונאה ו-Prompt Injection (BLOCKED_SCAM)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('חוסם מוכר הונאה SuperCheapElectro99 ומנקה הזרקת פרומפט', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.text();",
+                  "  pm.expect(body).to.include('BLOCKED_SCAM');",
+                  "  pm.expect(body.toLowerCase()).to.not.include('ignore all previous instructions');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Apple AirPods Pro 2\",\n  \"override_ship_to\": \"IL\",\n  \"use_saved_profile\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/deals/search",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "deals", "search"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. התאמה מולטי-מודאלית מתמונה או קישור (PRO)",
+      "item": [
+        {
+          "name": "זיהוי מוצר מקישור URL (200 ל-PRO / 403 ל-FREE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('מחזיר SKU למשתמש PRO או חוסם ב-403 למשתמש FREE', function () {",
+                  "  const tier = pm.environment.get('user_tier') || 'FREE';",
+                  "  if (tier === 'FREE') {",
+                  "    pm.response.to.have.status(403);",
+                  "  } else {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().detected_sku).to.eql('SONY-WH1000XM5');",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_url\": \"https://www.amazon.com/dp/B09XS7JWHH\",\n  \"hint_text\": \"Sony WH-1000XM5 Wireless Headphones\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/deals/match-from-image",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "deals", "match-from-image"]
+            }
+          }
+        },
+        {
+          "name": "זיהוי מוצר מתמונת Base64 (200 ל-PRO / 403 ל-FREE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('מחלץ SKU מתמונה ל-PRO או חוסם ב-403 ל-FREE', function () {",
+                  "  const tier = pm.environment.get('user_tier') || 'FREE';",
+                  "  if (tier === 'FREE') {",
+                  "    pm.response.to.have.status(403);",
+                  "  } else {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().detected_sku).to.be.a('string').and.not.be.empty;",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_base64\": \"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==\",\n  \"image_mime_type\": \"image/png\",\n  \"hint_text\": \"Samsung T7 Shield 2TB\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/deals/match-from-image",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "deals", "match-from-image"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. אופטימיזציית פיצול סל ומע\"מ $75 (PRO)",
+      "item": [
+        {
+          "name": "חישוב פיצול חבילות חכם (חיסכון במע\"מ ישראלי 18%)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('מחשב SPLIT_PACKAGES למשתמש PRO או חוסם 403 ל-FREE', function () {",
+                  "  const tier = pm.environment.get('user_tier') || 'FREE';",
+                  "  if (tier === 'FREE') {",
+                  "    pm.response.to.have.status(403);",
+                  "  } else {",
+                  "    pm.response.to.have.status(200);",
+                  "    const d = pm.response.json();",
+                  "    pm.expect(d.recommended_strategy).to.eql('SPLIT_PACKAGES');",
+                  "    pm.expect(d.saved_ils).to.be.above(0);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"store_name\": \"ASOS\",\n  \"ship_to_country\": \"IL\",\n  \"shipping_per_package_usd\": 8.0,\n  \"free_shipping_threshold_usd\": 49.0,\n  \"items\": [\n    {\n      \"sku\": \"NIKE-PEG41\",\n      \"title\": \"Nike Pegasus 41\",\n      \"store_name\": \"ASOS\",\n      \"unit_price_usd\": 58.0,\n      \"quantity\": 1\n    },\n    {\n      \"sku\": \"ADIDAS-UB5\",\n      \"title\": \"Adidas Ultraboost 5\",\n      \"store_name\": \"ASOS\",\n      \"unit_price_usd\": 64.0,\n      \"quantity\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/cart/optimize-split",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cart", "optimize-split"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. דירוג ואימות קופונים קהילתי",
+      "item": [
+        {
+          "name": "דיווח קופון שעבד (WELCOME10)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('רושם הצבעה חיובית ומעדכן success_rate', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.coupon_code).to.eql('WELCOME10');",
+                  "  pm.expect(d.success_rate).to.be.above(0.35);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"store_name\": \"Amazon\",\n  \"worked\": true,\n  \"cart_total_usd\": 268.0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/coupons/WELCOME10/feedback",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "coupons", "WELCOME10", "feedback"]
+            }
+          }
+        },
+        {
+          "name": "דיווח קופון שבור (BROKEN50 — מושתק מתחת ל-0.35)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('קופון BROKEN50 נשאר מושתק מתחת לסף 0.35', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.suppressed).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"store_name\": \"Amazon\",\n  \"worked\": false,\n  \"cart_total_usd\": 131.0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/coupons/BROKEN50/feedback",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "coupons", "BROKEN50", "feedback"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. מעקב מחירים (Watchlist), היסטוריה ו-Kafka",
+      "item": [
+        {
+          "name": "הוספת מוצר למעקב מחירים (Watchlist)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('נוסף פריט ל-Watchlist (201)', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.id).to.be.a('string').and.not.be.empty;",
+                  "  pm.environment.set('watchlist_id', d.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": \"prod_sony_xm5\",\n  \"sku\": \"SONY-WH1000XM5\",\n  \"product_title\": \"Sony WH-1000XM5 Wireless Headphones\",\n  \"store_name\": \"Amazon\",\n  \"target_price_usd\": 260.0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/watchlist",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "watchlist"]
+            }
+          }
+        },
+        {
+          "name": "רשימת המעקב האישית שלי",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('רשימת ה-Watchlist מכילה את הפריט שנוסף', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.be.an('array').and.not.be.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/watchlist",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "watchlist"]
+            }
+          }
+        },
+        {
+          "name": "היסטוריית מחירים 90 יום (זיהוי Fake Discount)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('מזהה זינוק מחיר מעל 15% על SAM-T7-2TB ב-eBay', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.fake_discount_flag).to.eql(true);",
+                  "  pm.expect(d.spike_pct).to.be.above(15);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/deals/SAM-T7-2TB/history?store_name=eBay",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "deals", "SAM-T7-2TB", "history"],
+              "query": [{ "key": "store_name", "value": "eBay" }]
+            }
+          }
+        },
+        {
+          "name": "הפעלת אירוע ירידת מחיר ב-Kafka (price-drop-events)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('משגר התראת ירידת מחיר לבעל ה-Watchlist', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.total_alerts_dispatched).to.be.at.least(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": \"prod_sony_xm5\",\n  \"sku\": \"SONY-WH1000XM5\",\n  \"store_name\": \"Amazon\",\n  \"new_price_usd\": 239.0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/deals/price-drop",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "deals", "price-drop"]
+            }
+          }
+        },
+        {
+          "name": "מחיקת פריט מרשימת המעקב",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('מוחק בהצלחה פריט בבעלות המשתמש (200)', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().deleted).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/watchlist/{{watchlist_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "watchlist", "{{watchlist_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. שער אישור אנושי לרכישה (HITL Checkout)",
+      "item": [
+        {
+          "name": "ייזום בקשת Checkout (עצירה ב-PENDING_APPROVAL)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('עוצר את הרכישה בסטטוס PENDING_APPROVAL', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.status).to.eql('PENDING_APPROVAL');",
+                  "  pm.environment.set('approval_id', d.approval_id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": \"prod_sony_xm5\",\n  \"sku\": \"SONY-WH1000XM5\",\n  \"product_title\": \"Sony WH-1000XM5 Wireless Headphones\",\n  \"store_name\": \"Amazon\",\n  \"affiliate_url\": \"https://www.amazon.com/dp/B09XS7JWHH?tag=dealscoutai-20\",\n  \"total_landed_usd\": 295.98,\n  \"total_landed_ils\": 1080.33,\n  \"applied_coupons\": [\"HTZ12\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/deals/checkout/initiate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "deals", "checkout", "initiate"]
+            }
+          }
+        },
+        {
+          "name": "אישור רכישה על ידי הבעלים (APPROVED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('הבעלים מאשר את הרכישה בהצלחה (APPROVED)', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().status).to.eql('APPROVED');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approval_id\": \"{{approval_id}}\",\n  \"decision\": \"APPROVED\",\n  \"user_note\": \"אושר על ידי המשתמש דרך Postman\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/deals/approve-checkout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "deals", "approve-checkout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. ניהול מערכת, עלויות Gemini ו-Audit Logs (ADMIN)",
+      "item": [
+        {
+          "name": "לוח ניטור עלויות טוקנים ו-OpenTelemetry",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('ADMIN מקבל טלמטריה (200), משתמש רגיל מקבל 403', function () {",
+                  "  const tier = pm.environment.get('user_tier') || 'FREE';",
+                  "  if (tier === 'ADMIN') {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.have.property('total_otel_spans');",
+                  "  } else {",
+                  "    pm.response.to.have.status(403);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/telemetry",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "telemetry"]
+            }
+          }
+        },
+        {
+          "name": "צפייה ביומני ביקורת אבטחה (Audit Logs)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('ADMIN מקבל Audit Logs (200), משתמש רגיל מקבל 403', function () {",
+                  "  const tier = pm.environment.get('user_tier') || 'FREE';",
+                  "  if (tier === 'ADMIN') {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "  } else {",
+                  "    pm.response.to.have.status(403);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/audit-logs",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "audit-logs"]
+            }
+          }
+        },
+        {
+          "name": "שדרוג מסלול משתמש ל-PRO (ADMIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('ADMIN משדרג מסלול (200), משתמש רגיל מקבל 403', function () {",
+                  "  const tier = pm.environment.get('user_tier') || 'FREE';",
+                  "  if (tier === 'ADMIN') {",
+                  "    pm.response.to.have.status(200);",
+                  "  } else {",
+                  "    pm.response.to.have.status(403);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tier\": \"PRO\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/users/{{user_id}}/tier",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "users", "{{user_id}}", "tier"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. סיום סשן והתנתקות",
+      "item": [
+        {
+          "name": "התנתקות וביטול משפחת טוקנים (Logout)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('התנתקות וביטול טוקנים הצליחו (200)', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

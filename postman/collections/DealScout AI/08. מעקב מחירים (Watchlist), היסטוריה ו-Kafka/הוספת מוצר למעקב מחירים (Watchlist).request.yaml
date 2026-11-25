@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/watchlist"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "product_id": "prod_sony_xm5",
+      "sku": "SONY-WH1000XM5",
+      "product_title": "Sony WH-1000XM5 Wireless Headphones",
+      "store_name": "Amazon",
+      "target_price_usd": 260.0
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('נוסף פריט ל-Watchlist (201)', function () {
+        pm.expect(pm.response.code).to.be.oneOf([200, 201]);
+        const d = pm.response.json();
+        pm.expect(d.id).to.be.a('string').and.not.be.empty;
+        pm.environment.set('watchlist_id', d.id);
+      });
+    language: text/javascript
+order: 1000

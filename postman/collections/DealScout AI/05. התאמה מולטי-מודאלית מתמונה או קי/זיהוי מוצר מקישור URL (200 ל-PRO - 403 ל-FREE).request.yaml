@@ -1,0 +1,27 @@
+$kind: http-request
+name: זיהוי מוצר מקישור URL (200 ל-PRO / 403 ל-FREE)
+url: "{{base_url}}/api/v1/deals/match-from-image"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "product_url": "https://www.amazon.com/dp/B09XS7JWHH",
+      "hint_text": "Sony WH-1000XM5 Wireless Headphones"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('מחזיר SKU למשתמש PRO או חוסם ב-403 למשתמש FREE', function () {
+        const tier = pm.environment.get('user_tier') || 'FREE';
+        if (tier === 'FREE') {
+          pm.response.to.have.status(403);
+        } else {
+          pm.response.to.have.status(200);
+          pm.expect(pm.response.json().detected_sku).to.eql('SONY-WH1000XM5');
+        }
+      });
+    language: text/javascript
+order: 1000

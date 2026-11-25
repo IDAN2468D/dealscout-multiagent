@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/users/{{user_id}}/tier"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "tier": "PRO"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('ADMIN משדרג מסלול (200), משתמש רגיל מקבל 403', function () {
+        const tier = pm.environment.get('user_tier') || 'FREE';
+        if (tier === 'ADMIN') {
+          pm.response.to.have.status(200);
+        } else {
+          pm.response.to.have.status(403);
+        }
+      });
+    language: text/javascript
+order: 3000
